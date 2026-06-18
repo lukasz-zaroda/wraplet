@@ -588,9 +588,54 @@ describe("AbstractDependentWraplet", () => {
     expect(initFn).toHaveBeenCalledTimes(1);
     expect(destroyFn).toHaveBeenCalledTimes(1);
   });
+
+  it("initializes dependencies before the `onInitialize` and destroys them after `onDestroy`", async () => {
+    const order: string[] = [];
+
+    class Dep extends AbstractWraplet {
+      protected async onInitialize() {
+        order.push("dep:init");
+      }
+      protected async onDestroy() {
+        order.push("dep:destroy");
+      }
+    }
+
+    const map = {
+      dep: {
+        selector: "[data-dep]",
+        Class: Dep,
+        required: true,
+        multiple: false,
+      },
+    } satisfies WrapletDependencyMap;
+
+    class Parent extends AbstractDependentWraplet<Element, typeof map> {
+      protected async onInitialize() {
+        order.push("parent:init");
+      }
+      protected async onDestroy() {
+        order.push("parent:destroy");
+      }
+    }
+
+    const node = document.createElement("div");
+    node.innerHTML = `<div data-dep></div>`;
+    const wraplet = new Parent(new DDM(node, map));
+
+    await wraplet.wraplet.initialize();
+    await wraplet.wraplet.destroy();
+
+    expect(order).toEqual([
+      "dep:init",
+      "parent:init",
+      "parent:destroy",
+      "dep:destroy",
+    ]);
+  });
 });
 
-describe("getAbstractDependentWrapletWirings", () => {
+describe("AbstractDependentWraplet.wiring", () => {
   it("accepts a DependencyManager instance directly", async () => {
     const initSpy = jest.fn();
     const destroySpy = jest.fn();

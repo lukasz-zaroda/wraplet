@@ -54,7 +54,18 @@ export abstract class AbstractWraplet<
       );
     }
 
-    return composeWrapletApi(this.node, this, this.wrapletApiWirings());
+    return composeWrapletApi(this.node, this, [
+      ...this.wrapletApiWirings(),
+      this.defaultWrapletApiWiring(),
+    ]);
+  }
+
+  protected defaultWrapletApiWiring(): Wiring {
+    return AbstractWraplet.wiring({
+      initializeCallback: this.onInitialize.bind(this),
+      destroyCallback: this.onDestroy.bind(this),
+      nodeManager: () => this._nodeManager,
+    });
   }
 
   /**
@@ -88,13 +99,7 @@ export abstract class AbstractWraplet<
    * Wires up the WrapletApi with lifecycle callbacks and NodeManager integration.
    */
   protected wrapletApiWirings(): Wiring[] {
-    return [
-      AbstractWraplet.wiring({
-        initializeCallback: this.onInitialize.bind(this),
-        destroyCallback: this.onDestroy.bind(this),
-        nodeManager: () => this._nodeManager,
-      }),
-    ];
+    return [];
   }
 
   protected get nodeManager(): NodeManager<N> {

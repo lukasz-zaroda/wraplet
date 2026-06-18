@@ -8,7 +8,7 @@ import {
 import { DDM } from "../DependencyManager/DDM";
 import { AbstractWraplet, AbstractWrapletWiringArgs } from "./AbstractWraplet";
 import { WrapletApi } from "./types/WrapletApi";
-import { mergeWirings, Wiring } from "./composeWrapletApi";
+import { composeWrapletApi, mergeWirings, Wiring } from "./composeWrapletApi";
 
 interface AbstractDependentWrapletWiringArgs extends AbstractWrapletWiringArgs {
   dependencyManager: (() => DependencyManager) | DependencyManager;
@@ -51,21 +51,19 @@ export abstract class AbstractDependentWraplet<
       );
     }
 
-    return super.createWrapletApi();
+    return composeWrapletApi(this.node, this, [
+      ...this.wrapletApiWirings(),
+      this.defaultWrapletApiWiring(),
+    ]);
   }
 
-  /**
-   * Wire up the DependencyManager-aware lifecycle callbacks.
-   */
-  protected override wrapletApiWirings() {
-    const wirings = super.wrapletApiWirings();
-    wirings.push(
+  protected defaultWrapletApiWiring(): Wiring {
+    return mergeWirings([
       AbstractDependentWraplet.wiring({
         dependencyManager: () => this.dm,
       }),
-    );
-
-    return wirings;
+      super.defaultWrapletApiWiring(),
+    ]);
   }
 
   /**

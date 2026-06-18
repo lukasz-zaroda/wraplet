@@ -257,8 +257,8 @@ describe("AbstractWraplet", () => {
   });
 });
 
-describe("getAbstractWrapletWirings", () => {
-  it("getAbstractWrapletWirings accepts a NodeManager instance directly", async () => {
+describe("AbstractWraplet.wiring", () => {
+  it("AbstractWraplet.wiring accepts a NodeManager instance directly", async () => {
     const node = document.createElement("div");
     const nodeManager = new NodeManager(node);
     const listenerFn = jest.fn();
@@ -276,7 +276,7 @@ describe("getAbstractWrapletWirings", () => {
     expect(listenerFn).not.toHaveBeenCalled();
   });
 
-  it("getAbstractWrapletWirings accepts a NodeManager provider", async () => {
+  it("AbstractWraplet.wiring accepts a NodeManager provider", async () => {
     const node = document.createElement("div");
     const nodeManager = new NodeManager(node);
     const listenerFn = jest.fn();
