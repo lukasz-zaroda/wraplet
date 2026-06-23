@@ -126,5 +126,11 @@ describe("NodeManager", () => {
       root.dispatchEvent(new Event("click"));
       expect(callback).not.toHaveBeenCalled();
     });
+
+    it("wire handles callback returning undefined", async () => {
+      const wiring = NodeManager.wire(() => undefined);
+
+      await expect(wiring.destroyCallback!()).resolves.toBeUndefined();
+    });
   });
 });

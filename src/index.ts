@@ -18,6 +18,7 @@ export type { WrapletSet } from "./Set/types/WrapletSet";
 
 export { DefaultWrapletSetReadonly } from "./Set/DefaultWrapletSetReadonly";
 export { DefaultWrapletSet } from "./Set/DefaultWrapletSet";
+export { isWrapletSet } from "./Set/types/WrapletSet";
 
 // Wraplet
 export type { Wraplet } from "./Wraplet/types/Wraplet";
@@ -31,7 +32,9 @@ export {
   composeWrapletApi,
   mergeWirings,
   wireCallback,
+  lazyWiring,
   type Wiring,
+  type Wireable,
 } from "./Wraplet/composeWrapletApi";
 export { createOuterDestroyCallback } from "./Wraplet/createOuterDestroyCallback";
 export { createOuterInitializeCallback } from "./Wraplet/createOuterInitializeCallback";
@@ -48,6 +51,7 @@ export { DNTM } from "./NodeTreeManager/DNTM";
 export type { WrapletDependencyMap } from "./Wraplet/types/WrapletDependencyMap";
 
 // Utils
+export { flattenDependencies } from "./utils/utils";
 export type { Constructable } from "./utils/types/Utils";
 
 // Global

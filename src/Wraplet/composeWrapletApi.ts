@@ -5,6 +5,10 @@ import { WrapletApiFactoryBasicCallback } from "./types/WrapletApiFactoryCallbac
 
 export type Wiring = Omit<WrapletApiFactoryArgs, "wraplet" | "node">;
 
+export type Wireable = {
+  wiring(): Wiring;
+};
+
 export function mergeWirings(wirings: Wiring[]): Wiring {
   const initializeCallbacks = wirings.map(
     (config) => config.initializeCallback,
@@ -34,6 +38,33 @@ export function wireCallback(
 ): Wiring {
   return {
     [callbackName]: callback,
+  };
+}
+
+/**
+ * Returns a wiring that evaluates the callback lazily on the first lifecycle event
+ * and then reuses the same returned wiring for subsequent lifecycle events.
+ */
+export function lazyWiring(callback: () => Wiring | void): Wiring {
+  let evaluated = false;
+  let cachedCallbackResult: Wiring | void;
+
+  const getWiring = (): Wiring | void => {
+    if (!evaluated) {
+      cachedCallbackResult = callback();
+      evaluated = true;
+    }
+
+    return cachedCallbackResult;
+  };
+
+  return {
+    initializeCallback: async () => {
+      return getWiring()?.initializeCallback?.();
+    },
+    destroyCallback: async () => {
+      return getWiring()?.destroyCallback?.();
+    },
   };
 }
 

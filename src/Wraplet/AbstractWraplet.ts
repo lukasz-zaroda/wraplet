@@ -158,7 +158,21 @@ export abstract class AbstractWraplet<
 
     if (args.nodeManager) {
       const nodeManagerArg = args.nodeManager;
-      wirings.push(NodeManager.wire(nodeManagerArg));
+
+      wirings.push({
+        destroyCallback: async () => {
+          const nodeManager =
+            typeof nodeManagerArg === "function"
+              ? nodeManagerArg()
+              : nodeManagerArg;
+
+          // NodeManager implements only destroyCallback.
+          // @todo We don't use the new lazyWiring function here because
+          //   it would evaluate the callback on initialization,
+          //   which would be a subtle BC break.
+          await nodeManager?.wiring().destroyCallback?.();
+        },
+      });
     }
 
     return mergeWirings(wirings);

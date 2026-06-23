@@ -1,4 +1,5 @@
 import {
+  lazyWiring,
   mergeWirings,
   wireCallback,
 } from "../../src/Wraplet/composeWrapletApi";
@@ -78,5 +79,107 @@ describe("wireCallback", () => {
     await wiring.destroyCallback?.();
     expect(cb).toHaveBeenCalledTimes(1);
     expect(wiring.initializeCallback).toBeUndefined();
+  });
+});
+
+describe("lazyWiring", () => {
+  it("returns a wiring with both initialize and destroy callbacks", () => {
+    const wiring = lazyWiring(() => ({}));
+    expect(typeof wiring.initializeCallback).toBe("function");
+    expect(typeof wiring.destroyCallback).toBe("function");
+  });
+
+  it("does not evaluate the callback until the wiring is used", () => {
+    const callback = jest.fn(() => ({}));
+    lazyWiring(callback);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("evaluates the callback when the initialize callback is used", async () => {
+    const callback = jest.fn(() => ({}));
+    const wiring = lazyWiring(callback);
+
+    expect(callback).not.toHaveBeenCalled();
+    await wiring.initializeCallback?.();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("evaluates the callback when the destroy callback is used", async () => {
+    const callback = jest.fn(() => ({}));
+    const wiring = lazyWiring(callback);
+
+    expect(callback).not.toHaveBeenCalled();
+    await wiring.destroyCallback?.();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("delegates to the initialize callback of the returned wiring", async () => {
+    const innerInit = jest.fn();
+    const wiring = lazyWiring(() => ({
+      initializeCallback: innerInit,
+    }));
+
+    await wiring.initializeCallback?.();
+    expect(innerInit).toHaveBeenCalledTimes(1);
+  });
+
+  it("delegates to the destroy callback of the returned wiring", async () => {
+    const innerDestroy = jest.fn();
+    const wiring = lazyWiring(() => ({
+      destroyCallback: innerDestroy,
+    }));
+
+    await wiring.destroyCallback?.();
+    expect(innerDestroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("evaluates the callback only once and reuses the returned wiring", async () => {
+    const callback = jest.fn(() => ({}));
+    const wiring = lazyWiring(callback);
+
+    await wiring.initializeCallback?.();
+    await wiring.initializeCallback?.();
+    await wiring.destroyCallback?.();
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles a callback returning void without throwing", async () => {
+    const wiring = lazyWiring(() => {});
+
+    await expect(wiring.initializeCallback?.()).resolves.toBeUndefined();
+    await expect(wiring.destroyCallback?.()).resolves.toBeUndefined();
+  });
+
+  it("handles a returned wiring without the relevant callback", async () => {
+    const initOnly = lazyWiring(() => ({
+      initializeCallback: jest.fn(),
+    }));
+    await expect(initOnly.destroyCallback?.()).resolves.toBeUndefined();
+
+    const destroyOnly = lazyWiring(() => ({
+      destroyCallback: jest.fn(),
+    }));
+    await expect(destroyOnly.initializeCallback?.()).resolves.toBeUndefined();
+  });
+
+  it("propagates the resolved value of the returned initialize callback", async () => {
+    const wiring = lazyWiring(() => ({
+      initializeCallback: async () => {
+        // returns undefined, simulating a real async wiring
+      },
+    }));
+
+    await expect(wiring.initializeCallback?.()).resolves.toBeUndefined();
+  });
+
+  it("evaluates the callback only once even when it returns void", async () => {
+    const callback = jest.fn(() => {});
+    const wiring = lazyWiring(callback);
+
+    await wiring.initializeCallback?.();
+    await wiring.destroyCallback?.();
+
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 });

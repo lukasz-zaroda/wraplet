@@ -1,7 +1,7 @@
 import { isParentNode } from "../NodeTreeManager/utils";
 import { SelectorCallback } from "./types/WrapletDependencyDefinition";
 
-import { Wiring } from "./composeWrapletApi";
+import { Wireable, Wiring } from "./composeWrapletApi";
 
 type Listener = {
   callback: EventListenerOrEventListenerObject;
@@ -9,7 +9,7 @@ type Listener = {
   options?: AddEventListenerOptions | boolean;
 };
 
-export class NodeManager<N extends Node> {
+export class NodeManager<N extends Node> implements Wireable {
   private listeners: Map<Node, Listener[]> = new Map();
 
   constructor(private node: N) {}
@@ -92,6 +92,20 @@ export class NodeManager<N extends Node> {
     this.listeners.clear();
   }
 
+  public wiring(): Wiring {
+    return {
+      destroyCallback: async () => {
+        this.destroy();
+      },
+    };
+  }
+
+  /**
+   * @deprecated
+   *   For an existing instance, use `nodeManager.wiring()`.
+   *   For lazy wiring, use `lazyWiring`, but note that it evaluates the provider
+   *   on the first lifecycle event, which may be initialization.
+   */
   public static wire(
     nodeManager: (() => NodeManager<Node> | undefined) | NodeManager<Node>,
   ): Wiring {
