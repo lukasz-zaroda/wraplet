@@ -40,7 +40,12 @@ import { DependencyLifecycleListener } from "./types/DependencyLifecycleListener
 import { isMapTreeBuilder, MapTreeBuilder } from "../Map/MapTreeBuilder";
 import { Injector } from "../Injector/types/Injector";
 import { DDMStatus } from "./types/DDMStatus";
-import { RESOLVE, throwIfErrors } from "../utils/utils";
+import {
+  actOnDependencies,
+  actOnDependenciesWraplets,
+  RESOLVE,
+  throwIfErrors,
+} from "../utils/utils";
 
 export class DDM<
   N extends Node = Node,
@@ -140,58 +145,49 @@ export class DDM<
   private async initializeDeps() {
     const errors: Error[] = [];
 
-    await Promise.all(
-      Object.entries(this.directDependencies).map(async ([id, dependency]) => {
-        if (!dependency) return;
+    await actOnDependenciesWraplets(
+      this.directDependencies as WrapletDependencies<M>,
+      async (id, wraplet) => {
+        if (
+          wraplet.wraplet.status.isInitialized ||
+          wraplet.wraplet.status.isGettingInitialized
+        ) {
+          return;
+        }
 
-        const wraplets: Wraplet[] = isWrapletSet(dependency)
-          ? Array.from(dependency)
-          : [dependency];
+        try {
+          await wraplet.wraplet.initialize();
+        } catch (error) {
+          errors.push(
+            new AggregateError(
+              [error],
+              `Error during initialization of the "${id}" dependency.`,
+            ),
+          );
+          return;
+        }
 
-        await Promise.all(
-          wraplets.map(async (wraplet) => {
-            if (
-              wraplet.wraplet.status.isInitialized ||
-              wraplet.wraplet.status.isGettingInitialized
-            ) {
-              return;
-            }
+        const listenersErrors: unknown[] = [];
 
+        const listeners = this.initializedDependencyListeners.get(id);
+        if (listeners) {
+          for (const fn of listeners) {
             try {
-              await wraplet.wraplet.initialize();
+              await fn(wraplet as DependencyInstance<M, keyof M>);
             } catch (error) {
-              errors.push(
-                new AggregateError(
-                  [error],
-                  `Error during initialization of the "${id}" dependency.`,
-                ),
-              );
-              return;
+              listenersErrors.push(error);
             }
-
-            const listenersErrors: unknown[] = [];
-
-            const listeners = this.initializedDependencyListeners.get(id);
-            if (listeners) {
-              for (const fn of listeners) {
-                try {
-                  await fn(wraplet as DependencyInstance<M, keyof M>);
-                } catch (error) {
-                  listenersErrors.push(error);
-                }
-              }
-              if (listenersErrors.length > 0) {
-                errors.push(
-                  new AggregateError(
-                    listenersErrors,
-                    `At least one listener of the "${id}" dependency threw exception`,
-                  ),
-                );
-              }
-            }
-          }),
-        );
-      }),
+          }
+          if (listenersErrors.length > 0) {
+            errors.push(
+              new AggregateError(
+                listenersErrors,
+                `At least one listener of the "${id}" dependency threw exception`,
+              ),
+            );
+          }
+        }
+      },
     );
 
     throwIfErrors(errors, `Errors during the dependencies initialization.`);
@@ -766,9 +762,11 @@ export class DDM<
   private async destroyDeps(sync: boolean = false): Promise<void> {
     const errors: Error[] = [];
 
-    await Promise.all(
-      Object.entries(this.directDependencies).map(async ([id, dependency]) => {
-        if (!dependency || !this.map[id]["destructible"]) {
+    await actOnDependencies(
+      this.directDependencies as WrapletDependencies<M>,
+      async (id, dependency) => {
+        if (!dependency) return;
+        if (!this.map[id]["destructible"]) {
           return;
         }
 
@@ -805,7 +803,7 @@ export class DDM<
             }
           }),
         );
-      }),
+      },
     );
 
     throwIfErrors(

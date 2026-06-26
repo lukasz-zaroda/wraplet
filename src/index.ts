@@ -51,7 +51,11 @@ export { DNTM } from "./NodeTreeManager/DNTM";
 export type { WrapletDependencyMap } from "./Wraplet/types/WrapletDependencyMap";
 
 // Utils
-export { flattenDependencies } from "./utils/utils";
+export {
+  flattenDependencies,
+  actOnDependencies,
+  actOnDependenciesWraplets,
+} from "./utils/utils";
 export type { Constructable } from "./utils/types/Utils";
 
 // Global
